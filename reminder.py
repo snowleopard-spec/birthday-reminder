@@ -1,18 +1,18 @@
 import json
 import os
 import resend
-from datetime import date, datetime
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+SGT = ZoneInfo("Asia/Singapore")
 
 
 def days_until_birthday(birthday_str: str) -> int:
     """Calculate how many days until the next occurrence of a birthday."""
-    today = date.today()
+    today = datetime.now(SGT).date()
     bday = datetime.strptime(birthday_str, "%Y-%m-%d").date()
 
-    # Next birthday this year
     next_bday = bday.replace(year=today.year)
-
-    # If it already passed this year, use next year
     if next_bday < today:
         next_bday = bday.replace(year=today.year + 1)
 
@@ -21,12 +21,18 @@ def days_until_birthday(birthday_str: str) -> int:
 
 def format_email(name: str, days: int, birthday_str: str) -> tuple[str, str]:
     """Return (subject, html_body) for the reminder email."""
+    today = datetime.now(SGT).date()
     bday = datetime.strptime(birthday_str, "%Y-%m-%d").date()
-    date_str = bday.strftime("%A %-d %B")  # e.g. "Monday 15 March"
+
+    # Use the actual upcoming birthday date for the correct day name and year
+    next_bday = bday.replace(year=today.year)
+    if next_bday < today:
+        next_bday = bday.replace(year=today.year + 1)
+    date_str = next_bday.strftime("%A %-d %B")  # e.g. "Sunday 8 March"
 
     if days == 0:
         subject = f"🎂 Today is {name}'s birthday!"
-        headline = f"Today is {name}'s birthday!"
+        headline = f"Today is {name}'s birthday! ({date_str})"
         body_line = "Don't let the day go by without reaching out."
     elif days == 1:
         subject = f"⏰ {name}'s birthday is tomorrow"
@@ -49,7 +55,6 @@ def format_email(name: str, days: int, birthday_str: str) -> tuple[str, str]:
 
 
 def main():
-    # Load config from environment
     api_key = os.environ.get("RESEND_API_KEY")
     to_email = os.environ.get("TO_EMAIL")
     from_email = os.environ.get("FROM_EMAIL", "birthdays@resend.dev")
@@ -59,7 +64,6 @@ def main():
 
     resend.api_key = api_key
 
-    # Load birthdays
     with open("birthdays.json", "r") as f:
         birthdays = json.load(f)
 
