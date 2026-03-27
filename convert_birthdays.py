@@ -3,7 +3,7 @@ from datetime import datetime
 
 INPUT_FILE = "birthdays.txt"
 OUTPUT_FILE = "birthdays.json"
-DAYS_BEFORE = [7, 1, 0]
+DAYS_BEFORE = [3, 1, 0]
 PLACEHOLDER_YEAR = 2000
 
 def convert():
