@@ -40,8 +40,16 @@ Add these three secrets:
 | `TO_EMAIL` | The email address you want reminders sent to |
 | `FROM_EMAIL` | `onboarding@resend.dev` (or your verified domain later) |
 
-### 5. Edit birthdays.json
-Replace the sample entries with real ones. Format:
+### 5. Edit birthdays.txt
+Add entries to `birthdays.txt` — one per line, `Name; DD-MMM` (e.g. `Alice; 24-Mar`).
+Then run:
+```bash
+python3 convert_birthdays.py
+```
+This regenerates `birthdays.json` (sorted by date, with default reminders) and, if
+the JSON actually changed, prompts to stage, commit, and push both files to git.
+
+Prefer to edit JSON directly? Format:
 ```json
 {
   "name": "Person's name",
@@ -85,7 +93,9 @@ birthday-reminder/
 ├── .github/
 │   └── workflows/
 │       └── daily_check.yml   ← the scheduler
-├── birthdays.json             ← your data (stays private in private repo)
+├── birthdays.txt              ← human-friendly source list
+├── birthdays.json             ← generated data (stays private in private repo)
+├── convert_birthdays.py       ← txt → json, with optional git sync
 ├── reminder.py                ← the logic
 ├── requirements.txt
 └── README.md

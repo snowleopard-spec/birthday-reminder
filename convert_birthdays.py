@@ -1,4 +1,6 @@
 import json
+import os
+import subprocess
 from datetime import datetime
 
 INPUT_FILE = "birthdays.txt"
@@ -27,8 +29,15 @@ def convert():
 
     birthdays.sort(key=lambda x: x["date"][5:])
 
+    old_contents = None
+    if os.path.exists(OUTPUT_FILE):
+        with open(OUTPUT_FILE, "r") as f:
+            old_contents = f.read()
+
+    new_contents = json.dumps(birthdays, indent=2)
+
     with open(OUTPUT_FILE, "w") as f:
-        json.dump(birthdays, f, indent=2)
+        f.write(new_contents)
 
     print(f"Done. {len(birthdays)} birthdays written to {OUTPUT_FILE}.")
     for b in birthdays:
@@ -39,6 +48,27 @@ def convert():
         print(f"\nSkipped {len(errors)} line(s) due to errors:")
         for e in errors:
             print(e)
+
+    if new_contents != old_contents:
+        sync_to_git()
+
+def sync_to_git():
+    answer = input(f"\n{OUTPUT_FILE} changed. Stage, commit, and push to git? [y/N]: ").strip().lower()
+    if answer not in ("y", "yes"):
+        print("Skipping git sync.")
+        return
+
+    try:
+        subprocess.run(["git", "add", INPUT_FILE, OUTPUT_FILE], check=True)
+        subprocess.run(["git", "commit", "-m", "Update birthdays"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Git commit failed: {e}")
+        return
+
+    try:
+        subprocess.run(["git", "push"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Git push failed (commit is local): {e}")
 
 if __name__ == "__main__":
     convert()
