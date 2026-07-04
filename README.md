@@ -8,7 +8,7 @@ Emails you a few days before — and on — each person's birthday. Runs daily v
 
 ### 1. Create a private GitHub repo
 - Go to github.com → New repository
-- Name it `birthday-reminder`
+- Name it `birthday`
 - Set to **Private**
 - Don't initialise with any files
 
@@ -17,7 +17,7 @@ Emails you a few days before — and on — each person's birthday. Runs daily v
 git init
 git add .
 git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/birthday-reminder.git
+git remote add origin https://github.com/YOUR_USERNAME/birthday.git
 git push -u origin main
 ```
 
@@ -89,7 +89,7 @@ Each person can have their own `days_before` list. For example:
 ## File structure
 
 ```
-birthday-reminder/
+birthday/
 ├── .github/
 │   └── workflows/
 │       └── daily_check.yml   ← the scheduler
