@@ -1,1 +1,7 @@
 .DS_Store
+birthdays.json
+birthdays.txt
+.env
+venv/
+__pycache__/
+*.pyc

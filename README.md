@@ -1,102 +1,104 @@
 # Birthday Reminder
 
-Emails you a few days before — and on — each person's birthday. Runs daily via GitHub Actions. Nothing stored in the cloud except your code.
+Emails you a few days before — and on — each person's birthday. Names are
+**encrypted at rest** with a passphrase-derived key (Fernet + scrypt); only
+the ciphertext blob (`birthdays.json.enc`) is ever committed. The reminder
+job decrypts in memory on a hardened droplet under cron. Nothing plaintext
+leaves your laptop.
 
 ---
 
-## Setup (one-time, ~15 minutes)
+## Files
 
-### 1. Create a private GitHub repo
-- Go to github.com → New repository
-- Name it `birthday`
-- Set to **Private**
-- Don't initialise with any files
-
-### 2. Push these files to the repo
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/birthday.git
-git push -u origin main
 ```
+birthday/
+├── birthdays.txt              ← local, human-readable source of truth (gitignored)
+├── birthdays.json.enc         ← encrypted blob (committed, safe in public repo)
+├── birthday_crypto.py         ← Fernet + scrypt encrypt/decrypt
+├── convert_birthdays.py       ← birthdays.txt → birthdays.json.enc, offers commit + push
+├── reminder.py                ← decrypts in memory, sends reminders
+├── requirements.txt
+└── README.md
+```
+
+`birthdays.txt` format — one entry per line: `Name; DD-MMM` (e.g. `Alice; 24-Mar`).
+Lines starting with `#` are ignored.
+
+---
+
+## Setup (one-time)
+
+### 1. Install
+```bash
+python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
+```
+
+### 2. Generate and save a passphrase
+```bash
+openssl rand -base64 32
+```
+**Save this in your password manager immediately.** It re-derives the key on
+every run; lose it and the blob is permanently unreadable.
 
 ### 3. Get a Resend API key
-- Sign up at [resend.com](https://resend.com) (free)
-- Go to API Keys → Create API Key
-- Copy the key (you only see it once)
-- For the sending address, use `onboarding@resend.dev` initially —
-  this works immediately without domain verification, but only sends to
-  your own verified email address (fine for personal use)
+Sign up at [resend.com](https://resend.com), create an API key, and use
+`onboarding@resend.dev` as the from-address (works without domain
+verification but only sends to your own verified email).
 
-### 4. Add secrets to GitHub
-In your repo: **Settings → Secrets and variables → Actions → New repository secret**
-
-Add these three secrets:
-
-| Name | Value |
-|------|-------|
-| `RESEND_API_KEY` | Your Resend API key |
-| `TO_EMAIL` | The email address you want reminders sent to |
-| `FROM_EMAIL` | `onboarding@resend.dev` (or your verified domain later) |
-
-### 5. Edit birthdays.txt
-Add entries to `birthdays.txt` — one per line, `Name; DD-MMM` (e.g. `Alice; 24-Mar`).
-Then run:
+### 4. Create your `birthdays.txt` and encrypt it
 ```bash
-python3 convert_birthdays.py
-```
-This regenerates `birthdays.json` (sorted by date, with default reminders) and, if
-the JSON actually changed, prompts to stage, commit, and push both files to git.
-
-Prefer to edit JSON directly? Format:
-```json
-{
-  "name": "Person's name",
-  "date": "YYYY-MM-DD",      ← year doesn't matter for logic, just use real birth year
-  "days_before": [7, 1, 0]   ← send reminders 7 days before, 1 day before, and on the day
-}
+export BIRTHDAY_CIPHER_PASSPHRASE="..."   # from your password manager
+$EDITOR birthdays.txt                      # add entries
+python convert_birthdays.py                # writes birthdays.json.enc
 ```
 
-### 6. Test it manually
-- Go to your repo → **Actions** tab
-- Click **Daily Birthday Check** → **Run workflow**
-- Watch the logs — you should see each person listed with days remaining
-- If anyone hits a reminder threshold, you'll get an email
+### 5. Deploy to a droplet
+See `birthday-upgrade-plan.md` for the full droplet setup (SSH hardening,
+non-root user, `.env` with `chmod 600`, cron). Summary:
+
+- Clone the repo over HTTPS on the droplet.
+- Put secrets in `/opt/birthday-reminder/.env` (`BIRTHDAY_CIPHER_PASSPHRASE`,
+  `RESEND_API_KEY`, `TO_EMAIL`, `FROM_EMAIL`), `chmod 600`.
+- Cron entry (`23:00 UTC = 07:00 SGT`):
+  ```
+  0 23 * * * cd /opt/birthday-reminder && set -a && . ./.env && set +a && ./venv/bin/python reminder.py
+  ```
 
 ---
 
-## How it works
+## Editing the birthday list later
 
-The script runs every morning at 07:00 Singapore time. It:
-1. Reads `birthdays.json`
-2. Calculates how many days until each person's next birthday
-3. Sends an email for anyone whose `days_before` list includes today's countdown
+On your laptop:
+```bash
+export BIRTHDAY_CIPHER_PASSPHRASE="..."
+$EDITOR birthdays.txt
+python convert_birthdays.py       # re-encrypts, offers to commit + push
+```
 
-That's it.
+Then on the droplet, one manual pull to pick up the new blob:
+```bash
+ssh birthdaybot@<droplet>
+cd /opt/birthday-reminder && git pull
+```
+
+Next cron run uses the new list. No plaintext ever leaves your laptop.
 
 ---
 
 ## Customising reminder timing
 
-Each person can have their own `days_before` list. For example:
-- `[14, 7, 3, 1, 0]` — two weeks out, one week, three days, day before, day of
-- `[7, 0]` — just a week's notice and the day itself
-- `[1, 0]` — last-minute only
+Each entry gets a default `days_before = [3, 1, 0]` (three days out, day
+before, day of). To customise per-person, edit `birthdays.json.enc` via a
+decrypt/re-encrypt loop, or extend `convert_birthdays.py` to parse a
+per-line override.
 
 ---
 
-## File structure
+## How it works
 
-```
-birthday/
-├── .github/
-│   └── workflows/
-│       └── daily_check.yml   ← the scheduler
-├── birthdays.txt              ← human-friendly source list
-├── birthdays.json             ← generated data (stays private in private repo)
-├── convert_birthdays.py       ← txt → json, with optional git sync
-├── reminder.py                ← the logic
-├── requirements.txt
-└── README.md
-```
+At 07:00 SGT the droplet:
+1. Reads `birthdays.json.enc`
+2. Derives the key from `BIRTHDAY_CIPHER_PASSPHRASE` via scrypt
+3. Decrypts in memory
+4. For each person, computes days-until-birthday and emails if today matches
+   their `days_before` list
