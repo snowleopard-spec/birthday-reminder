@@ -15,7 +15,7 @@ Save the output to the password manager entry **immediately**. If you lose it be
 ### 2. Re-encrypt on laptop
 `convert_birthdays.py` reads `birthdays.txt` (plaintext source of truth) and encrypts with whatever passphrase is in the env. So:
 ```bash
-cd /Users/wessch/Projects/Stack/birthday
+cd ~/Projects/Stack/birthday
 $EDITOR .env                              # replace BIRTHDAY_CIPHER_PASSPHRASE=<new>
 set -a && . ./.env && set +a
 python convert_birthdays.py               # writes birthdays.json.enc, offers to commit + push
@@ -24,7 +24,7 @@ Answer **yes** to the commit + push prompt. The new blob is now on `origin/main`
 
 ### 3. Update droplet `.env` + pull
 ```bash
-ssh root@161.35.122.12
+ssh <droplet>
 cd /root/birthday
 $EDITOR .env                              # replace BIRTHDAY_CIPHER_PASSPHRASE=<new>
 git pull                                  # fetch the newly-encrypted blob

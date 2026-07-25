@@ -21,7 +21,7 @@ Full sequence: build branch → merge to main → encrypt + commit blob → purg
 - [x] **Cleanup — GitHub Actions secrets** — `RESEND_API_KEY`, `TO_EMAIL`, `FROM_EMAIL` deleted via `gh secret delete` on 2026-07-24. `gh secret list` returns empty.
 - [ ] **(Optional)** GitHub Support ticket to expire cached commit SHAs sooner than the ~90-day default. Verified 0 forks, 1 self-star, 0 external watchers.
 
-**Backup decision:** the `--mirror` backup at `/Users/wessch/Projects/Stack/birthday-backup.git` is being **kept** by user preference. It contains the 42 plaintext names but is local-only, never synced. Not deleted.
+**Backup decision:** the `--mirror` backup at `~/Projects/Stack/birthday-backup.git` is being **kept** by user preference. It contains the 42 plaintext names but is local-only, never synced. Not deleted.
 
 **Where you left off:** deploy is live, first scheduled run verified, cron runs at 22:30 UTC daily = 06:30 SGT, Actions secrets deleted, laptop `.env` in place. Only two optional items remain: disable Actions on the repo, and the GH Support ticket for SHA expiry.
 
@@ -223,7 +223,7 @@ git commit -m "add encrypted birthday blob"
 
 ## Step 4 — Purge plaintext from history ✅ DONE
 
-**Executed note:** backup is at `/Users/wessch/Projects/Stack/birthday-backup.git` (not `../birthday-reminder-backup.git` — repo dir is `birthday`, not `birthday-reminder`). `filter-repo --force` was used because the repo was not a fresh clone. All commit SHAs rotated (expected). Verified: full-history grep for plaintext names returned zero matches; `git log --all -- birthdays.json birthdays.txt` empty.
+**Executed note:** backup is at `~/Projects/Stack/birthday-backup.git` (not `../birthday-reminder-backup.git` — repo dir is `birthday`, not `birthday-reminder`). `filter-repo --force` was used because the repo was not a fresh clone. All commit SHAs rotated (expected). Verified: full-history grep for plaintext names returned zero matches; `git log --all -- birthdays.json birthdays.txt` empty.
 
 
 **Backup first** (this backup contains the plaintext — see caveat below):
@@ -359,11 +359,11 @@ Three places it can exist, by design:
 |---|---|---|
 | Password manager | Permanent, encrypted | Canonical copy. If lost, blob is unrecoverable. |
 | `/root/birthday/.env` on droplet (`chmod 600`) | Persistent, plaintext on disk | Cron sources this to decrypt at runtime. Created in Step 6b. |
-| `/Users/wessch/Projects/Stack/birthday/.env` on laptop (`chmod 600`) | Persistent, plaintext on disk | **Optional convenience** so you don't `export` every time you edit `birthdays.txt`. Already gitignored. See below. |
+| `~/Projects/Stack/birthday/.env` on laptop (`chmod 600`) | Persistent, plaintext on disk | **Optional convenience** so you don't `export` every time you edit `birthdays.txt`. Already gitignored. See below. |
 
 The laptop `.env` is a trade-off: one more copy on disk vs. never having to paste the passphrase into a terminal. Most devs keep it. To create it:
 ```bash
-cat > /Users/wessch/Projects/Stack/birthday/.env <<'EOF'
+cat > ~/Projects/Stack/birthday/.env <<'EOF'
 BIRTHDAY_CIPHER_PASSPHRASE=<paste from password manager>
 EOF
 chmod 600 .env
@@ -375,7 +375,7 @@ chmod 600 .env
 
 On your laptop — `birthdays.txt` is your local source of truth (gitignored, never leaves the box):
 ```bash
-cd /Users/wessch/Projects/Stack/birthday
+cd ~/Projects/Stack/birthday
 # option A — if you created the local .env above:
 set -a && . ./.env && set +a
 # option B — if not, paste the passphrase every time:
@@ -399,7 +399,7 @@ Next cron run at 07:00 SGT uses the new list. No plaintext ever leaves your lapt
 - [x] Merged to main
 - [x] Passphrase generated **and saved to password manager**
 - [x] `birthdays.json.enc` committed; plaintext gitignored + unstaged
-- [x] `--mirror` backup taken (at `/Users/wessch/Projects/Stack/birthday-backup.git`)
+- [x] `--mirror` backup taken (at `~/Projects/Stack/birthday-backup.git`)
 - [x] History purged; `git log --all -- birthdays.json birthdays.txt` empty
 - [x] Force-pushed `main` (no tags in repo; encrypt-at-rest branch not pushed)
 - [~] Droplet hardening verified — **skipped by user**; box already known-good from existing production apps
@@ -410,5 +410,5 @@ Next cron run at 07:00 SGT uses the new list. No plaintext ever leaves your lapt
 - [~] `--mirror` backup deleted — **kept** by user preference (local-only, contains plaintext but not synced)
 - [x] Delete GitHub Actions secrets: `RESEND_API_KEY`, `TO_EMAIL`, `FROM_EMAIL` — done 2026-07-24 via `gh secret delete`.
 - [ ] (Optional) Disable Actions on the repo entirely (Settings → Actions → General → "Disable Actions") — removes attack surface, tidies the UI.
-- [x] Create `/Users/wessch/Projects/Stack/birthday/.env` on laptop with `BIRTHDAY_CIPHER_PASSPHRASE`, `chmod 600` — done 2026-07-24.
+- [x] Create `~/Projects/Stack/birthday/.env` on laptop with `BIRTHDAY_CIPHER_PASSPHRASE`, `chmod 600` — done 2026-07-24.
 - [ ] (Optional) GitHub Support ticket filed to expire cached commits by SHA — otherwise accept the ~90-day residue window
