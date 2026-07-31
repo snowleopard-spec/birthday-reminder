@@ -66,6 +66,8 @@ def main():
     api_key = os.environ.get("RESEND_API_KEY")
     to_email = os.environ.get("TO_EMAIL")
     from_email = os.environ.get("FROM_EMAIL", "birthdays@resend.dev")
+    if "<" not in from_email:
+        from_email = f"Birthday Reminder <{from_email}>"
     passphrase = os.environ.get("BIRTHDAY_CIPHER_PASSPHRASE")
 
     if not api_key or not to_email:
