@@ -1,6 +1,7 @@
 .DS_Store
 birthdays.json
 birthdays.txt
+birthdays.ics
 .env
 venv/
 __pycache__/
